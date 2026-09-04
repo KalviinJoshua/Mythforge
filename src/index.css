@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-cinzel: "Cinzel", serif;
+  --font-cinzel-dec: "Cinzel Decorative", "Cinzel", serif;
+  --font-uncial: "Uncial Antiqua", cursive, serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #0d0c0b;
+  color: #d4cfc5;
+}
+
+.font-serif-hero {
+  font-family: var(--font-serif);
+}
+
+.font-fantasy {
+  font-family: var(--font-cinzel);
+}
+
+.font-fantasy-name {
+  font-family: "Cinzel Decorative", "Uncial Antiqua", "Cinzel", Georgia, serif;
+}
+
+.font-uncial {
+  font-family: "Uncial Antiqua", cursive, Georgia, serif;
+}
+
+/* Ancient Alchemist's Workbench Texture & Lighting */
+.bg-alchemist-workbench {
+  background-color: #0c0b0a;
+  background-image: 
+    radial-gradient(ellipse at 50% 15%, rgba(201, 160, 80, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 10% 20%, rgba(220, 100, 30, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #151311 0%, #0c0b0a 85%, #050504 100%);
+}
+
+/* Subtle wooden table grain & alchemical workbench distress */
+.alchemist-desk-texture {
+  background-image: radial-gradient(rgba(201, 160, 80, 0.07) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Ethereal Glowing Magical Border */
+@keyframes arcane-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(201, 160, 80, 0.25), 0 0 35px rgba(180, 110, 30, 0.12), inset 0 0 15px rgba(201, 160, 80, 0.06);
+    border-color: rgba(201, 160, 80, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(201, 160, 80, 0.4), 0 0 50px rgba(217, 119, 6, 0.22), inset 0 0 22px rgba(201, 160, 80, 0.12);
+    border-color: rgba(234, 179, 8, 0.85);
+  }
+}
+
+.arcane-card-glow {
+  animation: arcane-pulse 4.5s ease-in-out infinite;
+}
+
+/* Subtle Particle Drift */
+@keyframes float-sparkle {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-80px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+.sparkle-particle {
+  animation: float-sparkle 6s linear infinite;
+}
+
+
