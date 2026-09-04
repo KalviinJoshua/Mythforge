@@ -14,9 +14,10 @@ import {
   User,
   Swords,
   Download,
-  Edit3
+  Edit3,
+  Backpack
 } from 'lucide-react';
-import { FantasyCharacter, GuildProfile, CharacterRaceType } from './types';
+import { FantasyCharacter, GuildProfile, CharacterRaceType, LevelUpResult, InventoryItem } from './types';
 import { generateRandomCharacter, updateCharacterRace, generateQuestHook } from './data/characterData';
 import { CharacterCard } from './components/CharacterCard';
 import { CharacterIcon } from './components/CharacterIcon';
@@ -30,6 +31,18 @@ import { GuildCrestIcon } from './components/GuildCrestIcon';
 import { ArenaDuelModal } from './components/ArenaDuelModal';
 import { CardExporterModal } from './components/CardExporterModal';
 import { CharacterEditModal } from './components/CharacterEditModal';
+import { LevelUpModal } from './components/LevelUpModal';
+import { InventoryModal } from './components/InventoryModal';
+import { LootRewardModal } from './components/LootRewardModal';
+import { DiceRollerModal } from './components/DiceRollerModal';
+import { ensureCharacterLevelData, addExperience } from './utils/leveling';
+import { 
+  ensureCharacterInventoryData, 
+  addItemToInventory, 
+  removeItemFromInventory, 
+  setItemQuantity, 
+  toggleEquipItem 
+} from './utils/inventory';
 
 const DECK_STORAGE_KEY = 'fantasy_character_deck_v1';
 const GUILD_STORAGE_KEY = 'fantasy_guild_profile_v1';
@@ -54,7 +67,7 @@ export default function App() {
   });
 
   const [character, setCharacter] = useState<FantasyCharacter | null>(() => {
-    const initialChar = generateRandomCharacter();
+    const initialChar = ensureCharacterInventoryData(ensureCharacterLevelData(generateRandomCharacter()));
     initialChar.portrait = generateCharacterPortrait(initialChar.className);
     initialChar.forgedBy = `${DEFAULT_GUILD_PROFILE.username} • ${DEFAULT_GUILD_PROFILE.title}`;
     initialChar.guildCrest = DEFAULT_GUILD_PROFILE.crest;
@@ -65,14 +78,28 @@ export default function App() {
   const [deck, setDeck] = useState<FantasyCharacter[]>(() => {
     try {
       const saved = localStorage.getItem(DECK_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) 
+        ? parsed.map((c) => ensureCharacterInventoryData(ensureCharacterLevelData(c))) 
+        : [];
     } catch {
       return [];
     }
   });
+  const [levelUpModalData, setLevelUpModalData] = useState<{
+    character: FantasyCharacter;
+    result: LevelUpResult;
+  } | null>(null);
+  const [pendingLootReward, setPendingLootReward] = useState<{
+    lootItem: InventoryItem;
+    bossName: string;
+  } | null>(null);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDeckOpen, setIsDeckOpen] = useState(false);
   const [isArenaOpen, setIsArenaOpen] = useState(false);
+  const [isDiceRollerOpen, setIsDiceRollerOpen] = useState(false);
   const [isExporterOpen, setIsExporterOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isRolling, setIsRolling] = useState(false);
@@ -308,6 +335,68 @@ export default function App() {
     showToast(`Character parchment rewritten for ${updated.name}!`);
   }, [showToast]);
 
+  // Inventory Handlers
+  const handleToggleEquip = useCallback((itemId: string) => {
+    if (!character) return;
+    const updatedInventory = toggleEquipItem(character.inventory || [], itemId);
+    const updated = { ...character, inventory: updatedInventory };
+    setCharacter(updated);
+    setHistory((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : prev;
+    });
+  }, [character]);
+
+  const handleRemoveItem = useCallback((itemId: string) => {
+    if (!character) return;
+    const updatedInventory = removeItemFromInventory(character.inventory || [], itemId, 1);
+    const updated = { ...character, inventory: updatedInventory };
+    setCharacter(updated);
+    setHistory((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : prev;
+    });
+  }, [character]);
+
+  const handleChangeQuantity = useCallback((itemId: string, newQty: number) => {
+    if (!character) return;
+    const updatedInventory = setItemQuantity(character.inventory || [], itemId, newQty);
+    const updated = { ...character, inventory: updatedInventory };
+    setCharacter(updated);
+    setHistory((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : prev;
+    });
+  }, [character]);
+
+  const handleUpdateGold = useCallback((newGold: number) => {
+    if (!character) return;
+    const updated = { ...character, gold: Math.max(0, newGold) };
+    setCharacter(updated);
+    setHistory((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : prev;
+    });
+    showToast(`Gold purse updated: ${updated.gold} GP`);
+  }, [character, showToast]);
+
+  const handleAddItem = useCallback((newItem: InventoryItem) => {
+    if (!character) return;
+    const updatedInventory = addItemToInventory(character.inventory || [], newItem);
+    const updated = { ...character, inventory: updatedInventory };
+    setCharacter(updated);
+    setHistory((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : prev;
+    });
+    showToast(`Transmuted "${newItem.name}" into inventory vault!`);
+  }, [character, showToast]);
+
   // Handler for "Save to Deck"
   const handleSaveToDeck = useCallback((charToSave: FantasyCharacter) => {
     setDeck((prev) => {
@@ -343,6 +432,99 @@ export default function App() {
     }
     showToast(`Guild seal inscribed for ${updated.username}!`);
   }, [showToast]);
+
+  // Web Audio fanfare for Level Up
+  const playLevelUpSound = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      if (!audioCtxRef.current) {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx) {
+        if (ctx.state === 'suspended') ctx.resume();
+        const now = ctx.currentTime;
+        const chord = [523.25, 659.25, 783.99, 1046.50];
+        chord.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+          gain.gain.setValueAtTime(0.08, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.55);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.55);
+        });
+      }
+    } catch {
+      // Safely ignore
+    }
+  }, [soundEnabled]);
+
+  // Handler for Arena Boss Victory with XP & Level Progression & Gold Loot & Procedural Loot
+  const handleArenaVictory = useCallback((bossName: string, xpReward: number, goldReward = 0, lootItem?: InventoryItem) => {
+    if (!character) return;
+
+    // Apply deterministic XP addition, detect level-up, calculate class-specific stat growths
+    const { updatedCharacter, result } = addExperience(character, xpReward);
+
+    // Add gold loot
+    const heroWithGold: FantasyCharacter = {
+      ...updatedCharacter,
+      gold: (updatedCharacter.gold ?? 0) + goldReward,
+    };
+
+    // Update active character
+    setCharacter(heroWithGold);
+
+    // Update history
+    setHistory((prev) => prev.map((c) => (c.id === heroWithGold.id ? heroWithGold : c)));
+
+    // Update deck if this character is currently in the deck, which auto-syncs to localStorage
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === heroWithGold.id);
+      if (exists) {
+        return prev.map((c) => (c.id === heroWithGold.id ? heroWithGold : c));
+      }
+      return prev;
+    });
+
+    if (result.leveledUp) {
+      playLevelUpSound();
+      setLevelUpModalData({ character: heroWithGold, result });
+      showToast(`🌟 ASCENSION! ${heroWithGold.name} reached Level ${result.newLevel} & looted +${goldReward} GP!`);
+    } else {
+      showToast(`⚔️ Vanquished ${bossName}! Gained +${xpReward} XP & +${goldReward} GP!`);
+    }
+
+    // Trigger Loot Reward Reveal Modal if loot dropped
+    if (lootItem) {
+      setPendingLootReward({ lootItem, bossName });
+    }
+  }, [character, playLevelUpSound, showToast]);
+
+  // Handler for collecting loot item from LootRewardModal
+  const handleCollectLootReward = useCallback((item: InventoryItem) => {
+    if (!character) return;
+    const updatedInventory = addItemToInventory(character.inventory || [], item);
+    const updatedHero: FantasyCharacter = {
+      ...character,
+      inventory: updatedInventory,
+    };
+
+    setCharacter(updatedHero);
+    setHistory((prev) => prev.map((c) => (c.id === updatedHero.id ? updatedHero : c)));
+    setDeck((prev) => {
+      const exists = prev.some((c) => c.id === updatedHero.id);
+      return exists ? prev.map((c) => (c.id === updatedHero.id ? updatedHero : c)) : prev;
+    });
+
+    showToast(`Stored [${item.rarity}] ${item.name} in vault!`);
+    setPendingLootReward(null);
+  }, [character, showToast]);
 
   // Initialize summon counter on mount
   useEffect(() => {
@@ -413,6 +595,31 @@ export default function App() {
               </button>
 
               <button
+                id="btn-open-vault"
+                type="button"
+                onClick={() => setIsInventoryOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-amber-500/50 bg-[#1f1b17] hover:bg-amber-500 hover:text-[#0c0c0c] text-amber-300 text-xs font-bold uppercase tracking-wider transition-all shadow-xs cursor-pointer"
+                title="View Hero Vault & Inventory"
+              >
+                <Backpack className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Vault</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-200 border border-amber-500/40 font-mono">
+                  {character?.gold ?? 0}g
+                </span>
+              </button>
+
+              <button
+                id="btn-open-dice-header"
+                type="button"
+                onClick={() => setIsDiceRollerOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-[#c9a050]/40 bg-[#1f1b17] hover:bg-[#c9a050] hover:text-[#0c0c0c] text-[#fef08a] text-xs font-bold uppercase tracking-wider transition-all shadow-xs cursor-pointer"
+                title="Cast Polyhedral Dice (d4 - d100, Advantage, Modifiers)"
+              >
+                <Dices className="w-3.5 h-3.5 text-[#eab308]" />
+                <span>Dice</span>
+              </button>
+
+              <button
                 id="btn-toggle-sound"
                 onClick={() => setSoundEnabled((v) => !v)}
                 className="p-1.5 rounded-sm border border-[#c9a050]/25 text-[#c9a050] hover:text-[#f2efea] hover:bg-[#c9a050]/10 transition-colors"
@@ -461,6 +668,8 @@ export default function App() {
             onOpenExporter={() => setIsExporterOpen(true)}
             onOpenArena={() => setIsArenaOpen(true)}
             onOpenEdit={() => setIsEditOpen(true)}
+            onOpenInventory={() => setIsInventoryOpen(true)}
+            onOpenDiceRoller={() => setIsDiceRollerOpen(true)}
           />
         </section>
 
@@ -676,7 +885,15 @@ export default function App() {
         onClose={() => setIsArenaOpen(false)}
         character={character}
         soundEnabled={soundEnabled}
-        onVictory={(boss) => showToast(`Victory achieved over ${boss}!`)}
+        onVictory={handleArenaVictory}
+      />
+
+      {/* Level-Up Celebration Modal */}
+      <LevelUpModal
+        isOpen={!!levelUpModalData}
+        onClose={() => setLevelUpModalData(null)}
+        character={levelUpModalData?.character || null}
+        levelUpResult={levelUpModalData?.result || null}
       />
 
       {/* Trading Card PNG & D&D Stat Block Exporter Modal */}
@@ -694,6 +911,37 @@ export default function App() {
         onClose={() => setIsEditOpen(false)}
         character={character}
         onSave={handleSaveEditedCharacter}
+      />
+
+      {/* Hero Vault & Inventory Management Modal */}
+      <InventoryModal
+        isOpen={isInventoryOpen}
+        onClose={() => setIsInventoryOpen(false)}
+        character={character}
+        onToggleEquip={handleToggleEquip}
+        onRemoveItem={handleRemoveItem}
+        onChangeQuantity={handleChangeQuantity}
+        onUpdateGold={handleUpdateGold}
+        onAddItem={handleAddItem}
+      />
+
+      {/* Procedural Loot Spoils Modal */}
+      <LootRewardModal
+        isOpen={!!pendingLootReward}
+        onClose={() => setPendingLootReward(null)}
+        lootItem={pendingLootReward?.lootItem || null}
+        bossName={pendingLootReward?.bossName}
+        onCollect={handleCollectLootReward}
+      />
+
+      {/* Advanced Polyhedral Dice Roller Modal */}
+      <DiceRollerModal
+        isOpen={isDiceRollerOpen}
+        onClose={() => setIsDiceRollerOpen(false)}
+        soundEnabled={soundEnabled}
+        defaultDie="d20"
+        defaultModifier={character?.proficiencyBonus || 0}
+        initialLabel={character ? `${character.name} Check` : undefined}
       />
 
       {/* Footer subtext */}

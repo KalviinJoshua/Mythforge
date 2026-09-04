@@ -1,4 +1,5 @@
 import { CharacterClassType, CharacterRaceType, CardRarity, FantasyCharacter, RaceProfile, QuestHook } from '../types';
+import { generateClassStartingGear } from '../utils/inventory';
 
 export const ALL_RACES: CharacterRaceType[] = [
   'Human',
@@ -485,6 +486,11 @@ export function generateRandomCharacter(previousId?: string, preferredRace?: Cha
     badgeColor: profile.badgeColor,
     iconName: profile.iconName,
     stats,
+    level: 1,
+    xp: 0,
+    proficiencyBonus: 2,
+    inventory: generateClassStartingGear(characterClass, weapon).items,
+    gold: generateClassStartingGear(characterClass, weapon).startingGold,
     generatedAt: Date.now(),
   };
 }

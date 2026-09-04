@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { FantasyCharacter } from '../types';
 import { CharacterIcon } from './CharacterIcon';
 import { GuildCrestIcon } from './GuildCrestIcon';
+import { getXpProgress, getXpForNextLevel, getProficiencyBonus } from '../utils/leveling';
 import { 
   X, 
   Trash2, 
@@ -12,7 +13,10 @@ import {
   Sparkles, 
   Swords, 
   ShieldAlert,
-  BookOpen
+  BookOpen,
+  Trophy,
+  Coins,
+  Backpack
 } from 'lucide-react';
 
 interface MyDeckDrawerProps {
@@ -114,6 +118,12 @@ export const MyDeckDrawer: React.FC<MyDeckDrawerProps> = ({
               ) : (
                 deck.map((item) => {
                   const isActive = item.id === activeCharacterId;
+                  const itemLevel = item.level || 1;
+                  const itemXp = item.xp || 0;
+                  const itemPb = item.proficiencyBonus || getProficiencyBonus(itemLevel);
+                  const progress = getXpProgress(itemLevel, itemXp);
+                  const nextThreshold = getXpForNextLevel(itemLevel);
+
                   return (
                     <div
                       key={item.id}
@@ -129,6 +139,9 @@ export const MyDeckDrawer: React.FC<MyDeckDrawerProps> = ({
                           <CharacterIcon iconName={item.iconName} className="w-3.5 h-3.5 text-[#c9a050]" />
                           <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9a050]">
                             {item.className}
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold">
+                            Lvl {itemLevel}
                           </span>
                           {isActive && (
                             <span className="text-[9px] uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.2 rounded-xs ml-1">
@@ -156,6 +169,27 @@ export const MyDeckDrawer: React.FC<MyDeckDrawerProps> = ({
                         <p className="text-[11px] italic text-[#9e968a] truncate">
                           "{item.title}"
                         </p>
+                      </div>
+
+                      {/* Mini XP Bar */}
+                      <div className="mb-2.5 px-2.5 py-1.5 rounded-xs bg-[#11100e] border border-[#c9a050]/20">
+                        <div className="flex items-center justify-between text-[10px] font-mono text-[#a89f91] mb-1">
+                          <span className="text-[#eab308] font-semibold flex items-center gap-1">
+                            <Trophy className="w-2.5 h-2.5 text-[#eab308]" />
+                            PB: +{itemPb}
+                          </span>
+                          <span>
+                            {progress.isMaxLevel 
+                              ? 'Max Level' 
+                              : `${itemXp} / ${nextThreshold} XP`}
+                          </span>
+                        </div>
+                        <div className="w-full bg-[#1e1a16] h-1.5 rounded-full overflow-hidden border border-[#c9a050]/20">
+                          <div 
+                            className="bg-linear-to-r from-amber-600 to-yellow-400 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${progress.percent}%` }}
+                          />
+                        </div>
                       </div>
 
                       {/* Combat Stats: Health, Mana, Strength */}
@@ -198,11 +232,23 @@ export const MyDeckDrawer: React.FC<MyDeckDrawerProps> = ({
 
                       {/* Guild Master Inscription Seal */}
                       {item.forgedBy && (
-                        <div className="mb-2.5 text-[9px] text-[#8e877a] flex items-center gap-1.5 truncate px-1">
+                        <div className="mb-2 text-[9px] text-[#8e877a] flex items-center gap-1.5 truncate px-1">
                           <GuildCrestIcon crest={item.guildCrest || 'phoenix'} className="w-2.5 h-2.5 shrink-0" />
                           <span className="truncate">Seal: {item.forgedBy}</span>
                         </div>
                       )}
+
+                      {/* Inventory & Gold Pouch Summary */}
+                      <div className="flex items-center justify-between mb-2.5 px-1 text-[10px] font-mono border-t border-[#c9a050]/15 pt-1.5">
+                        <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                          <Coins className="w-2.5 h-2.5 text-amber-400" />
+                          {item.gold ?? 0} GP
+                        </span>
+                        <span className="flex items-center gap-1 text-[#9e968a]">
+                          <Backpack className="w-2.5 h-2.5 text-[#baa481]" />
+                          {item.inventory?.length ?? 0} items
+                        </span>
+                      </div>
 
                       {/* Inspect / Summon to Board Action */}
                       <button

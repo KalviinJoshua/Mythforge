@@ -3,6 +3,8 @@ import { FantasyCharacter, GuildProfile } from '../types';
 export function exportCharacterToMarkdown(character: FantasyCharacter, guild?: GuildProfile): string {
   return `# ${character.name}
 **Title:** ${character.title}  
+**Level:** ${character.level || 1} (Proficiency Bonus: +${character.proficiencyBonus || 2})  
+**Experience:** ${character.xp || 0} XP  
 **Class:** ${character.className}  
 **Race:** ${character.race} (${character.raceTrait?.name || 'Racial Trait'})  
 **Rarity:** ${character.rarity}  
@@ -83,10 +85,10 @@ export function downloadCharacterCardPng(character: FantasyCharacter, guildProfi
   ctx.font = 'bold 16px sans-serif';
   ctx.fillText(`★ ${character.rarity.toUpperCase()} CARD`, 56, 68);
 
-  // Race & Class Pill
+  // Race, Class & Level Pill
   ctx.fillStyle = '#c9a050';
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillText(`${character.race.toUpperCase()} • ${character.className.toUpperCase()}`, width - 360, 68);
+  ctx.font = 'bold 17px sans-serif';
+  ctx.fillText(`LVL ${character.level || 1} • ${character.race.toUpperCase()} • ${character.className.toUpperCase()}`, width - 390, 68);
 
   // Character Name
   ctx.fillStyle = '#f7f2e8';

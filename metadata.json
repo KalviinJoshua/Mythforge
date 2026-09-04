@@ -1,6 +1,6 @@
 {
   "name": "Remix Fantasy Character Generator",
-  "description": "An interactive fantasy hero generator featuring an alchemist workbench UI, bordered player cards, 10 races, 6-attribute combat stats, quest hooks, turn-based boss duel arena, and PNG card exporter.",
+  "description": "An interactive fantasy hero generator featuring an alchemist workbench UI, bordered player cards, XP and level ascension progression, equipment vault and persistent inventory, turn-based boss duel arena, procedural monster generator with bestiary, advanced polyhedral dice roller, and PNG card exporter.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -5,6 +5,7 @@ import { ALL_RACES, RACE_PROFILES } from '../data/characterData';
 import { CharacterIcon } from './CharacterIcon';
 import { CharacterPortrait } from './CharacterPortrait';
 import { GuildCrestIcon } from './GuildCrestIcon';
+import { getXpProgress, getXpForNextLevel, getProficiencyBonus, MAX_LEVEL } from '../utils/leveling';
 import { 
   Copy, 
   Check, 
@@ -26,7 +27,10 @@ import {
   MapPin,
   Download,
   Edit3,
-  Dices
+  Dices,
+  Trophy,
+  Backpack,
+  Coins
 } from 'lucide-react';
 
 interface CharacterCardProps {
@@ -46,6 +50,8 @@ interface CharacterCardProps {
   onOpenExporter?: () => void;
   onOpenArena?: () => void;
   onOpenEdit?: () => void;
+  onOpenInventory?: () => void;
+  onOpenDiceRoller?: () => void;
 }
 
 const RARITY_STYLES: Record<CardRarity, { border: string; bg: string; text: string }> = {
@@ -54,6 +60,7 @@ const RARITY_STYLES: Record<CardRarity, { border: string; bg: string; text: stri
   Rare: { border: 'border-sky-500/50', bg: 'bg-sky-950/40', text: 'text-sky-300' },
   Epic: { border: 'border-purple-500/50', bg: 'bg-purple-950/40', text: 'text-purple-300' },
   Legendary: { border: 'border-amber-500/70', bg: 'bg-amber-950/50', text: 'text-amber-300' },
+  Mythic: { border: 'border-rose-500/80', bg: 'bg-rose-950/60', text: 'text-rose-300' },
 };
 
 export const CharacterCard: React.FC<CharacterCardProps> = ({
@@ -73,6 +80,8 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   onOpenExporter,
   onOpenArena,
   onOpenEdit,
+  onOpenInventory,
+  onOpenDiceRoller,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isRaceDropdownOpen, setIsRaceDropdownOpen] = useState(false);
@@ -127,6 +136,17 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   const intPercent = Math.min(100, Math.round((character.stats.intelligence / maxInt) * 100));
   const agiPercent = Math.min(100, Math.round((character.stats.agility / maxAgi) * 100));
   const chaPercent = Math.min(100, Math.round((character.stats.charisma / maxCha) * 100));
+
+  const currentLevel = character.level || 1;
+  const currentXp = character.xp || 0;
+  const proficiencyBonus = character.proficiencyBonus || getProficiencyBonus(currentLevel);
+  const xpProgress = getXpProgress(currentLevel, currentXp);
+  const nextLevelThreshold = getXpForNextLevel(currentLevel);
+
+  const equippedWeapon = character.inventory?.find((i) => i.category === 'weapon' && i.equipped)?.name || character.primaryWeapon;
+  const equippedArmor = character.inventory?.find((i) => i.category === 'armor' && i.equipped)?.name || 'Standard Attire';
+  const heroGold = character.gold ?? 0;
+  const inventoryCount = character.inventory?.length ?? 0;
 
   const rarityInfo = RARITY_STYLES[character.rarity || 'Legendary'];
 
@@ -184,6 +204,34 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                 >
                   <Swords className="w-3.5 h-3.5 text-rose-400" />
                   <span className="hidden sm:inline">Duel</span>
+                </button>
+              )}
+
+              {/* Dice Roller Quick Action */}
+              {onOpenDiceRoller && (
+                <button
+                  id="btn-open-dice-card"
+                  type="button"
+                  onClick={onOpenDiceRoller}
+                  title="Cast fate with polyhedral dice (d4 - d100, Advantage, Modifiers)"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xs border border-[#c9a050]/50 bg-[#251f18] text-[#fef08a] hover:bg-[#382d1f] hover:border-[#eab308] text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer"
+                >
+                  <Dices className="w-3.5 h-3.5 text-[#eab308]" />
+                  <span className="hidden sm:inline">Roll</span>
+                </button>
+              )}
+
+              {/* Inventory Vault Button */}
+              {onOpenInventory && (
+                <button
+                  id="btn-open-inventory"
+                  type="button"
+                  onClick={onOpenInventory}
+                  title="Open Hero Vault & Equipment Inventory"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs border border-amber-500/60 bg-[#221a11] text-amber-300 hover:bg-[#322416] hover:border-amber-400 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer"
+                >
+                  <Backpack className="w-3.5 h-3.5 text-[#eab308]" />
+                  <span>Vault ({character.inventory?.length ?? 0})</span>
                 </button>
               )}
 
@@ -311,6 +359,19 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Level & Proficiency Badge */}
+              <div 
+                id="character-level-badge"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b1712] border border-[#eab308]/60 text-[#eab308] text-xs font-bold uppercase tracking-wider shadow-xs"
+                title={`Level ${currentLevel} Hero with +${proficiencyBonus} Proficiency Bonus`}
+              >
+                <Trophy className="w-3.5 h-3.5 text-[#eab308]" />
+                <span>Level {currentLevel}</span>
+                <span className="text-[10px] text-[#baa481] font-semibold font-mono border-l border-[#c9a050]/35 pl-1.5">
+                  +{proficiencyBonus} PB
+                </span>
+              </div>
             </div>
 
             {/* Racial Trait Description Banner */}
@@ -360,6 +421,57 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
             >
               {character.flavor}
             </p>
+          </div>
+
+          {/* =========================================================================
+              HERO LEVEL & XP PROGRESSION SECTION
+             ========================================================================= */}
+          <div
+            id="player-card-xp-progression"
+            className="relative z-10 mb-4 p-3.5 rounded-sm bg-[#13110e] border border-[#c9a050]/40 shadow-inner"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase tracking-[0.2em] font-bold text-[#eab308] flex items-center gap-1.5 font-fantasy-name">
+                  <Sparkles className="w-3.5 h-3.5 text-[#eab308]" />
+                  Ascension Progress
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold">
+                  +{proficiencyBonus} Proficiency
+                </span>
+              </div>
+
+              <div className="text-xs font-mono">
+                {xpProgress.isMaxLevel ? (
+                  <span className="text-[#eab308] font-bold uppercase tracking-wider bg-[#261f12] px-2 py-0.5 rounded-xs border border-[#eab308]/50">
+                    Max Level (10)
+                  </span>
+                ) : (
+                  <span className="text-[#d8cfbf]">
+                    XP: <strong className="text-[#f5efe6]">{currentXp}</strong> / {nextLevelThreshold}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Glowing Arcane XP Bar */}
+            <div className="w-full bg-[#1e1a15] h-2 rounded-full overflow-hidden border border-[#c9a050]/30 relative">
+              <motion.div
+                className="bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 h-full rounded-full shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${xpProgress.percent}%` }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between mt-1.5 text-[10px] text-[#8e8577]">
+              <span>
+                {xpProgress.isMaxLevel
+                  ? 'Master of all realms • Paragon status'
+                  : `${xpProgress.neededForNext} XP required for Level ${Math.min(MAX_LEVEL, currentLevel + 1)}`}
+              </span>
+              <span className="font-mono text-[#c9a050] font-semibold">{xpProgress.percent}%</span>
+            </div>
           </div>
 
           {/* =========================================================================
@@ -538,34 +650,59 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
             </div>
           </div>
 
-          {/* Armament & Origin Badges */}
-          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-            <div className="rounded-xs border border-[#c9a050]/20 bg-[#141210] p-3 flex items-start gap-2.5">
-              <div className="p-1.5 rounded-xs bg-[#1f1b17] border border-[#c9a050]/30 text-[#c9a050] shrink-0">
-                <Wand2 className="w-3.5 h-3.5" />
+          {/* Armament, Armor & Homeland Badges */}
+          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+            <div className="rounded-xs border border-[#c9a050]/20 bg-[#141210] p-2.5 flex items-start gap-2">
+              <div className="p-1 rounded-xs bg-[#1f1b17] border border-[#c9a050]/30 text-[#c9a050] shrink-0">
+                <Swords className="w-3.5 h-3.5 text-amber-400" />
               </div>
               <div className="min-w-0">
-                <span className="block text-[9px] font-bold text-[#c9a050] uppercase tracking-wider">
-                  Favored Armament
+                <span className="block text-[8px] font-bold text-[#c9a050] uppercase tracking-wider">
+                  Equipped Weapon
                 </span>
-                <span className="text-xs font-medium text-[#e8e2d8] truncate block">
-                  {character.primaryWeapon}
+                <span className="text-xs font-medium text-[#e8e2d8] truncate block" title={equippedWeapon}>
+                  {equippedWeapon}
                 </span>
               </div>
             </div>
 
-            <div className="rounded-xs border border-[#c9a050]/20 bg-[#141210] p-3 flex items-start gap-2.5">
-              <div className="p-1.5 rounded-xs bg-[#1f1b17] border border-[#c9a050]/30 text-[#c9a050] shrink-0">
-                <Compass className="w-3.5 h-3.5" />
+            <div className="rounded-xs border border-[#c9a050]/20 bg-[#141210] p-2.5 flex items-start gap-2">
+              <div className="p-1 rounded-xs bg-[#1f1b17] border border-[#c9a050]/30 text-[#c9a050] shrink-0">
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
               </div>
               <div className="min-w-0">
-                <span className="block text-[9px] font-bold text-[#c9a050] uppercase tracking-wider">
-                  Homeland Sanctum
+                <span className="block text-[8px] font-bold text-[#c9a050] uppercase tracking-wider">
+                  Equipped Armor
                 </span>
-                <span className="text-xs font-medium text-[#e8e2d8] truncate block">
-                  {character.origin}
+                <span className="text-xs font-medium text-[#e8e2d8] truncate block" title={equippedArmor}>
+                  {equippedArmor}
                 </span>
               </div>
+            </div>
+
+            <div 
+              onClick={onOpenInventory}
+              className={`rounded-xs border border-amber-500/30 bg-[#17130e] p-2.5 flex items-center justify-between gap-2 ${
+                onOpenInventory ? 'cursor-pointer hover:border-amber-400 hover:bg-[#201a13] transition-colors' : ''
+              }`}
+              title="Click to open Hero Vault"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="p-1 rounded-xs bg-[#1f1b17] border border-amber-500/30 text-amber-400 shrink-0">
+                  <Coins className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-[8px] font-bold text-amber-400 uppercase tracking-wider">
+                    Purse & Vault
+                  </span>
+                  <span className="text-xs font-mono font-bold text-amber-300 truncate block">
+                    {heroGold} GP <span className="text-[9px] text-[#9d9282] font-normal font-sans">({inventoryCount} items)</span>
+                  </span>
+                </div>
+              </div>
+              {onOpenInventory && (
+                <span className="text-[10px] text-amber-400/80 font-mono">➔</span>
+              )}
             </div>
           </div>
 
