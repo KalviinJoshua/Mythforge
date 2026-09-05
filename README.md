@@ -304,7 +304,7 @@ Mythforge follows a client-side architecture.
           Heroes       XP    Loot   Dice      Modals/Cards
                         │      │      │
                         ▼      ▼      ▼
-                    Inventory Combat Monsters
+                     Inventory Combat Monsters
                         │      │      │
                         └──────┼──────┘
                                ▼
