@@ -301,17 +301,17 @@ Mythforge follows a client-side architecture.
              │          ┌──────┼──────┐          │
              │          │      │      │          │
              ▼          ▼      ▼      ▼          ▼
-          Heroes      XP    Loot   Dice      Modals/Cards
-                     │      │      │
-                     ▼      ▼      ▼
-                  Inventory Combat Monsters
-                     │      │      │
-                     └──────┼──────┘
-                            ▼
-                     Achievements
-                            │
-                            ▼
-                       localStorage
+          Heroes       XP    Loot   Dice      Modals/Cards
+                        │      │      │
+                        ▼      ▼      ▼
+                    Inventory Combat Monsters
+                        │      │      │
+                        └──────┼──────┘
+                               ▼
+                          Achievements
+                               │
+                               ▼
+                          localStorage
 ```
 
 The project does **not** currently depend on:
